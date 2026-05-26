@@ -29,9 +29,7 @@ Na installatie draait de hook automatisch bij elke `git commit` — hij valideer
 
 - **Python 3** (getest met 3.11+)
 - **pytest** — `pip install pytest` (voor de unit tests)
-- **cook CLI** — optioneel, alleen nodig voor recipe validatie
-  - `~/.hermes/bin/cook` (Hermes Agent installatie)
-  - Of installeer Cooklang CLI via `pip install cooklang`
+- **cook CLI** — optioneel, alleen nodig voor recipe validatie. Volg de [officiële installatie-instructies](https://cooklang.org/cli/download/)
 
 ## Repo structuur
 
