@@ -2,7 +2,38 @@
 
 Persoonlijke verzameling van Cooklang-recepten. Elk recept is een `.cook` bestand met gestructureerde ingrediënten, keukengerei en stappen.
 
-## Structuur
+## Setup
+
+Clone de repo:
+
+```bash
+git clone git@github.com:Davidsoff/recipes.git
+cd recipes
+```
+
+### Pre-commit hook installeren
+
+De pre-commit hook wordt **niet automatisch meegecloned** (`.git/hooks/` wordt niet door git bijgehouden). Installeer hem met:
+
+```bash
+# Optie 1: Symlink (aanbevolen)
+ln -s ../../scripts/validate-recipes.py .git/hooks/pre-commit
+
+# Optie 2: Git hooksPath (alternatief — werkt ook voor andere hooks in de repo)
+git config core.hooksPath scripts/
+```
+
+Na installatie draait de hook automatisch bij elke `git commit` — hij valideert alle gestagede `.cook` bestanden en draait de unit tests.
+
+### Vereisten
+
+- **Python 3** (getest met 3.11+)
+- **pytest** — `pip install pytest` (voor de unit tests)
+- **cook CLI** — optioneel, alleen nodig voor recipe validatie
+  - `~/.hermes/bin/cook` (Hermes Agent installatie)
+  - Of installeer Cooklang CLI via `pip install cooklang`
+
+## Repo structuur
 
 ```
 ├── <recept>.cook          # Cooklang recipe file
