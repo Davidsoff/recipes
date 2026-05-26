@@ -247,27 +247,48 @@ def main():
 
     if not files:
         print("  ✓ No .cook files to check")
-        return 0
+        recipe_ok = True
+    else:
+        recipe_ok = True
+        all_errors = []
+        for filepath in files:
+            basename = os.path.basename(filepath)
+            print(f"\n  ── {basename} ──")
+            errors = check_recipe(filepath)
+            if errors:
+                all_errors.extend(errors)
+                for e in errors:
+                    print(e)
+                recipe_ok = False
+            else:
+                print("  ✓  Format valid, servings parse, scaling OK, all ingredients scale correctly")
 
-    all_errors = []
-    for filepath in files:
-        basename = os.path.basename(filepath)
-        print(f"\n  ── {basename} ──")
-        errors = check_recipe(filepath)
-        if errors:
-            all_errors.extend(errors)
-            for e in errors:
-                print(e)
-        else:
-            print("  ✓  Format valid, servings parse, scaling OK, all ingredients scale correctly")
+        if not recipe_ok:
+            print(f"\n  ✖  {len(all_errors)} error(s) in recipe validation.")
+            return 1
 
-    print()
-    if all_errors:
-        print(f"  ✖  {len(all_errors)} error(s) found. Fix before committing.")
+        print(f"\n  ✓  All {len(files)} recipe(s) valid and scale correctly.")
+
+    # Step 5: Run unit tests
+    print("\n  ── Running unit tests ──")
+    test_result = subprocess.run(
+        [sys.executable, "-m", "pytest", "tests/", "-q"],
+        capture_output=True, text=True, cwd=REPO_DIR
+    )
+    # Print test output inline (strip trailing whitespace for clean display)
+    for line in test_result.stdout.split('\n'):
+        print(f"  {line.rstrip()}")
+    if test_result.stderr.strip():
+        for line in test_result.stderr.split('\n'):
+            print(f"  {line.rstrip()}")
+
+    if test_result.returncode != 0:
+        print("  ✖  Unit tests FAILED. Fix before committing.")
         return 1
     else:
-        print(f"  ✓  All {len(files)} recipe(s) valid and scale correctly.")
-        return 0
+        print("  ✓  Unit tests pass.")
+
+    return 0
 
 
 if __name__ == "__main__":
