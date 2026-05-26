@@ -1,11 +1,15 @@
 #!/usr/bin/env python3
-"""Pre-commit hook: validate Cooklang recipes and check ingredient scaling.
+"""Pre-commit hook: validate Cooklang recipes and verify ingredient scaling.
+
+Checks every staged .cook file for:
+1. Format validity (cook recipe must exit 0, no warnings)
+2. Numeric servings field in YAML frontmatter
+3. Correct scaling of all ingredients to 10 servings
 
 Usage:
     python3 validate-recipes.py          # check staged .cook files only
-    python3 validate-recipes.py --all    # check all .cook files
+    python3 validate-recipes.py --all    # check all .cook files in repo
 """
-import json
 import os
 import re
 import subprocess
@@ -13,6 +17,24 @@ import sys
 
 COOK = os.path.expanduser("~/.hermes/bin/cook")
 REPO_DIR = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
+
+# Unit conversion to grams (for mass) or millilitres (for volume)
+# (base_grams_or_ml, category) — "mass" or "volume"
+UNIT_BASE = {
+    "g": (1, "mass"),
+    "gr": (1, "mass"),
+    "gram": (1, "mass"),
+    "kg": (1000, "mass"),
+    "kilo": (1000, "mass"),
+    "ml": (1, "volume"),
+    "milliliter": (1, "volume"),
+    "l": (1000, "volume"),
+    "liter": (1000, "volume"),
+    "oz": (28.35, "mass"),
+    "ounce": (28.35, "mass"),
+    "lb": (453.6, "mass"),
+    "pound": (453.6, "mass"),
+}
 
 
 def run(cmd, **kwargs):
@@ -39,12 +61,50 @@ def frac_to_float(s):
         return None
 
 
-def get_numeric_display(display_str):
-    """Extract the first numeric value from a display string like '2 el' or '1 1/4 c'."""
-    m = re.match(r'([\d\s/.]+)', display_str)
+def parse_display(display_str):
+    """Parse a display string like '2 el' or '1 1/4 c' into (numeric_value, unit_string).
+
+    Returns (float|None, str).  The unit string is the remainder after the number.
+    """
+    m = re.match(r'([\d\s/.]+)\s*(.*)', display_str)
     if not m:
-        return None
-    return frac_to_float(m.group(1).strip())
+        return None, display_str
+    num = frac_to_float(m.group(1))
+    unit = m.group(2).strip()
+    return num, unit
+
+
+def convert_to_base(num, unit_str):
+    """Convert (num, unit_str) to a common base (grams or ml).
+
+    Returns (base_value, category) where category is 'mass', 'volume', or 'count'.
+    For countable items (stuks, groot, el, tl, etc.) the raw number is returned.
+    """
+    if not unit_str:
+        return num, "count"
+
+    # Extract the primary unit word (first word, ignoring parentheticals)
+    unit_word = unit_str.split()[0].lower().rstrip(".,;")
+
+    # Countable / non-convertible units
+    countable = {
+        "stuks", "stuk", "groot", "grote", "stengels", "stengel",
+        "handje", "blikje", "blik", "teen", "tenen", "bol", "bollen",
+        "el", "eetlepel", "tl", "theelepel",
+        "c", "cup", "cups", "koppen", "kop",
+        "pound", "pounds",
+        "naar",  # "naar smaak"
+    }
+    if unit_word in countable:
+        return num, "count"
+
+    # Convertible units
+    if unit_word in UNIT_BASE:
+        multiplier, category = UNIT_BASE[unit_word]
+        return num * multiplier, category
+
+    # Unknown — treat as countable
+    return num, "count"
 
 
 def parse_ingredients(text):
@@ -72,12 +132,10 @@ def get_servings(filepath):
     """Parse servings from YAML frontmatter."""
     with open(filepath) as f:
         content = f.read()
-    # Extract YAML frontmatter between --- markers
     m = re.match(r'^---\s*\n(.*?)\n---', content, re.DOTALL)
     if not m:
         return None
-    frontmatter = m.group(1)
-    for line in frontmatter.split('\n'):
+    for line in m.group(1).split('\n'):
         if re.match(r'^servings\s*:', line, re.IGNORECASE):
             val = line.split(':', 1)[1].strip()
             try:
@@ -88,14 +146,15 @@ def get_servings(filepath):
 
 
 def check_recipe(filepath):
-    """Validate a single .cook file and check scaling. Returns list of error strings."""
+    """Validate a single .cook file and check ingredient scaling. Returns list of error strings."""
     errors = []
     basename = os.path.basename(filepath)
 
     # Step 1: Validate format
     result = run([COOK, "recipe", filepath])
     if result.returncode != 0:
-        errors.append(f"  ✖  {basename}: validation FAILED\n     {result.stdout[:300]}{result.stderr[:300]}")
+        tail = (result.stderr or result.stdout or "").strip()[:200]
+        errors.append(f"  ✖  {basename}: validation FAILED\n     {tail}")
         return errors
 
     # Check for warnings
@@ -103,17 +162,15 @@ def check_recipe(filepath):
         warn_lines = [l for l in result.stdout.split('\n') if 'warn' in l.lower()]
         for w in warn_lines[:3]:
             errors.append(f"  ⚠  {basename}: {w.strip()}")
-        if errors:
-            return errors
+        return errors  # warnings = hard fail
 
     # Step 2: Parse servings
     servings = get_servings(filepath)
     if servings is None:
-        errors.append(f"  ⚠  {basename}: no numeric servings field — skipping scale check")
+        errors.append(f"  ⚠  {basename}: no numeric servings in frontmatter — can't verify scaling")
         return errors
-
     if servings <= 0:
-        errors.append(f"  ⚠  {basename}: invalid servings ({servings}) — skipping scale check")
+        errors.append(f"  ⚠  {basename}: invalid servings ({servings})")
         return errors
 
     # Step 3: Scale to 10 servings
@@ -123,7 +180,7 @@ def check_recipe(filepath):
         errors.append(f"  ✖  {basename}: scaling to 10 servings FAILED (×{factor})")
         return errors
 
-    # Step 4: Compare ingredient amounts
+    # Step 4: Verify scaling ratio for every ingredient
     orig_ings = parse_ingredients(result.stdout)
     scaled_ings = parse_ingredients(result_scaled.stdout)
 
@@ -133,22 +190,42 @@ def check_recipe(filepath):
     for i, (o_name, o_disp) in enumerate(orig_ings):
         if i >= len(scaled_ings):
             break
+
         s_name, s_disp = scaled_ings[i]
+        o_num, o_unit = parse_display(o_disp)
+        s_num, s_unit = parse_display(s_disp)
 
-        o_num = get_numeric_display(o_disp)
-        s_num = get_numeric_display(s_disp)
+        if o_num is None or s_num is None:
+            continue  # non-numeric (e.g. "naar smaak")
 
-        if o_num is not None and s_num is not None:
-            if abs(o_num - s_num) < 0.001:
-                errors.append(f"  ✖  {basename}: '{o_name}' unchanged ({o_disp} → {s_disp})")
-            elif s_num == 0 and o_num > 0:
-                errors.append(f"  ✖  {basename}: '{o_name}' collapsed to zero ({o_disp} → {s_disp})")
+        # Convert both to base units
+        o_base, o_cat = convert_to_base(o_num, o_unit)
+        s_base, s_cat = convert_to_base(s_num, s_unit)
+
+        # Check the ratio
+        if o_cat != "count" and o_cat == s_cat and o_cat in ("mass", "volume") and o_base > 0:
+            # Both in same base category (mass or volume) — precise ratio check
+            expected_base = o_base * factor
+            ratio = s_base / expected_base
+            if abs(ratio - 1.0) > 0.05:
+                errors.append(
+                    f"  ✖  {basename}: '{o_name}' wrong scale "
+                    f"({o_disp} → {s_disp}, expected ×{factor} but got ×{ratio:.4f})"
+                )
+        elif o_num > 0:
+            # Countable items — approximate check
+            expected_approx = o_num * factor
+            ratio = s_num / expected_approx if expected_approx > 0 else 0
+            if abs(ratio - 1.0) > 0.15:
+                errors.append(
+                    f"  ✖  {basename}: '{o_name}' wrong scale "
+                    f"({o_disp} → {s_disp}, expected ×{factor} but got ×{ratio:.4f})"
+                )
 
     return errors
 
 
 def main():
-    # Determine which files to check
     if len(sys.argv) > 1 and sys.argv[1] == "--all":
         files = sorted([
             os.path.join(REPO_DIR, f)
@@ -156,7 +233,6 @@ def main():
             if f.endswith('.cook')
         ])
     else:
-        # Staged files only
         result = subprocess.run(
             ["git", "diff", "--cached", "--name-only", "--diff-filter=ACM"],
             capture_output=True, text=True, cwd=REPO_DIR
@@ -183,7 +259,7 @@ def main():
             for e in errors:
                 print(e)
         else:
-            print("  ✓  Format valid, servings parse, scaling OK, all ingredients scale")
+            print("  ✓  Format valid, servings parse, scaling OK, all ingredients scale correctly")
 
     print()
     if all_errors:
