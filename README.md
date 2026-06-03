@@ -34,9 +34,14 @@ Na installatie draait de hook automatisch bij elke `git commit` — hij valideer
 ## Repo structuur
 
 ```
-├── <recept>.cook          # Cooklang recipe file
+├── italiaans/              # Italiaanse & Italiaans-Amerikaanse recepten
+├── nederlands/             # Nederlandse recepten
+├── wereldkeuken/           # Overige internationale recepten
+├── overige/                # Niet-avondeten (desserts, deeg, etc.)
+├── meal-plans/             # Gegenereerde weekmenu's (.menu)
 ├── scripts/
-│   └── validate-recipes.py  # Pre-commit hook & validation script
+│   ├── generate-meal-plan.py    # Wekelijks menu generator
+│   └── validate-recipes.py      # Pre-commit hook & validatie script
 ├── tests/
 │   └── test_validate_recipes.py
 ├── README.md
@@ -45,7 +50,11 @@ Na installatie draait de hook automatisch bij elke `git commit` — hij valideer
 
 ## Recept toevoegen
 
-1. Maak een `.cook` bestand in de root van de repo
+1. Maak een `.cook` bestand in de juiste subdirectory op basis van de `cuisine:`
+   - Italiaans → `italiaans/`
+   - Nederlands → `nederlands/`
+   - Overig → `wereldkeuken/`
+   - Niet-avondeten → `overige/`
 2. Zorg voor geldige YAML frontmatter met minimaal `title`, `servings`, `source` en `time`
 3. Gebruik Cooklang syntax:
    - `@Ingrediënt{hoeveelheid%eenheid}` voor ingrediënten

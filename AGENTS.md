@@ -6,8 +6,26 @@ This file contains instructions for AI coding agents working with this repositor
 
 ```
 ~/recipes-repo/                   # Clone of github.com/Davidsoff/recipes
-├── *.cook                        # Cooklang recipe files
+├── italiaans/                    # Italian & Italian-American recipes
+│   ├── lasagne-bolognese.cook
+│   ├── pasta-piselli.cook
+│   └── verstopte-groente-pastasaus.cook
+├── nederlands/                   # Dutch recipes
+│   ├── pasta-met-broccoli-en-spekreepjes.cook
+│   ├── pasta-met-tuinerwten-en-spekreepjes.cook
+│   └── stamppotje-met-paprika-en-rucola.cook
+├── wereldkeuken/                 # International recipes
+│   ├── bobotie-zonder-pakje.cook
+│   ├── couscous-met-kip.cook
+│   ├── kokossoep-met-udonnoedels-en-pindas.cook
+│   └── skillet-gnocchi-met-zalm-en-erwtjes.cook
+├── overige/                      # Non-dinner items (desserts, dough, etc.)
+│   ├── kinderchocola-repen.cook
+│   └── ragusea-pizzadeeg.cook
+├── meal-plans/                   # Generated weekly .menu files
+│   └── weekmenu-YYYY-Www.menu
 ├── scripts/
+│   ├── generate-meal-plan.py     # Weekly meal plan generator
 │   └── validate-recipes.py       # Pre-commit hook and validation script
 ├── tests/
 │   └── test_validate_recipes.py  # Unit tests for the validator
@@ -27,9 +45,14 @@ This repo is populated by an AI agent (Hermes) that processes recipe URLs sent v
 4. **Always translate English recipes to full Dutch** — title, description, ingredients, and instructions. If the recipe is already in Dutch (e.g. from leukerecepten.nl, ohmyfoodness.nl), no translation needed.
 5. Write the `.cook` file to `/tmp/` first
 6. Validate with `cook recipe /tmp/<file>.cook` — fix any warnings or errors
-7. Copy to `~/recipes-repo/`
-8. Commit with message: `feat: add <recipe name in Dutch>`
-9. Push
+7. Determine the correct cuisine subdirectory from the `cuisine:` field in YAML frontmatter:
+   - `italiaans` / `Italiaans` → `italiaans/`
+   - `nederlands` / `Nederlands` → `nederlands/`
+   - Everything else → `wereldkeuken/`
+   - Non-dinner items → `overige/`
+8. Copy to `~/recipes-repo/<subdirectory>/`
+9. Commit with message: `feat: add <recipe name in Dutch>`
+10. Push
 
 ### Commit Conventions
 

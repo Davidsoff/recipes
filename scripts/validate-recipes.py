@@ -228,9 +228,10 @@ def check_recipe(filepath):
 def main():
     if len(sys.argv) > 1 and sys.argv[1] == "--all":
         files = sorted([
-            os.path.join(REPO_DIR, f)
-            for f in os.listdir(REPO_DIR)
-            if f.endswith('.cook')
+            os.path.join(dp, f)
+            for dp, _, filenames in os.walk(REPO_DIR)
+            for f in filenames
+            if f.endswith('.cook') and '.git' not in dp
         ])
     else:
         result = subprocess.run(
