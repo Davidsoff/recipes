@@ -1,0 +1,54 @@
+---
+title: Weekmenu 2026-Week 25 (Avondeten)
+description: Avondmaaltijden voor de week van 15-06-2026
+servings: 4
+---
+
+==Day 0==
+
+-- Maandag 15-06-2026 --
+
+Dinner:
+- @../italiaans/pasta-piselli{2.0%servings}
+
+==Day 1==
+
+-- Dinsdag 16-06-2026 --
+
+Dinner:
+- @../nederlands/pasta-met-broccoli-en-spekreepjes{2.0%servings}
+
+==Day 2==
+
+-- Woensdag 17-06-2026 --
+
+Dinner:
+- @../italiaans/lasagne-bolognese{4%servings}
+
+==Day 3==
+
+-- Donderdag 18-06-2026 --
+
+Dinner:
+- @../wereldkeuken/bobotie-zonder-pakje{4%servings}
+
+==Day 4==
+
+-- Vrijdag 19-06-2026 --
+
+Dinner:
+- @../nederlands/pasta-met-sperziebonen-pesto-geitenkaas{4%servings}
+
+==Day 5==
+
+-- Zaterdag 20-06-2026 --
+
+Dinner:
+- @../wereldkeuken/zelfgemaakte-limonade{0.5%servings}
+
+==Day 6==
+
+-- Zondag 21-06-2026 --
+
+Dinner:
+- @../overige/gevulde-rolkoekjes{0.1%servings}
